@@ -88,14 +88,18 @@ class ExceptionWrapper(AbstractWrapper):
         super().__init__(*args, **kwargs)
 
     def reset(self, **kwargs):
-        observation = super().reset(**kwargs)
-        if len(observation) == 2 and type(observation) is tuple:
-            observation = observation[0]
+        result = super().reset(**kwargs)
+        # Handle gymnasium format (obs, info)
+        if isinstance(result, tuple) and len(result) == 2:
+            observation, info = result
+        else:
+            observation, info = result, {}
+        
         if not np.any(np.isnan(observation)):
             self.last_observation = observation.copy()
         else:
             return self.reset(**kwargs)
-        return observation
+        return observation, info
 
     def step(self, action):
         try:
@@ -108,15 +112,15 @@ class ExceptionWrapper(AbstractWrapper):
             ) = self._inner_step(action)
             if np.any(np.isnan(observation)):
                 raise self.error("NaN detected! Resetting.")
-            done = terminated or truncated
         except self.error as e:
             logger.log(f"Simulator exception thrown: {e}")
             observation = self.last_observation
             reward = 0
-            done = 1
+            terminated = True
+            truncated = False
             info = {}
             self.reset()
-        return observation, reward, done, info
+        return observation, reward, terminated, truncated, info
 
     def _inner_step(self, action):
         return super().step(action)

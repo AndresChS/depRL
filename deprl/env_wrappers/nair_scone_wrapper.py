@@ -1,4 +1,4 @@
-import numpy as np
+import numpy as np #type: ignore
 
 from .wrappers import ExceptionWrapper
 
@@ -13,9 +13,9 @@ class CustomSconeException(Exception):
     pass
 
 
-class SconeWrapper(ExceptionWrapper):
-    """Wrapper for SconeRL, compatible with
-    gym=0.13.
+class NairSconeWrapper(ExceptionWrapper):
+    """Wrapper for Nair envs implemented in SconeRL Hyfydy, compatible with
+    gymnasium (returns 5-tuple from step, 2-tuple from reset).
     """
 
     def __init__(self, *args, **kwargs):
@@ -52,7 +52,7 @@ class SconeWrapper(ExceptionWrapper):
         """
         takes an action and advances environment by 1 step.
         Changed to allow for correct sto saving.
-        """
+        
         if not self.unwrapped.has_reset:
             raise Exception("You have to call reset() once before step()")
 
@@ -76,10 +76,39 @@ class SconeWrapper(ExceptionWrapper):
             self.unwrapped.time / self.step_size
         ) < self._max_episode_steps
         return obs, reward, done, truncated, {}
-
+        """
+        return self.unwrapped.step(action)
+    
     def reset(self, *args, **kwargs):
-        obs = super().reset()
-        return obs, obs
+        #print(f'[Info] Resetting environment...')
+        result = super().reset(*args, **kwargs)
+        #print(f'[Info] Reset done. Initial COM height: {self.unwrapped.model.com_pos().y:.3f}')
+        # Ensure gymnasium format (obs, info)
+        if isinstance(result, tuple):
+            return result  # Already (obs, info)
+        return result, {}  # Convert old format to gymnasium
+
+    def seed(self, seed=None):
+        """Set the seed for the environment's random number generator."""
+        if hasattr(self.unwrapped, 'seed'):
+            return self.unwrapped.seed(seed)
+        # Fallback for environments without seed method
+        np.random.seed(seed)
+        return [seed]
+
+    @property
+    def model(self):
+        """Access to the underlying SCONE model."""
+        return self.unwrapped.model
+
+    @property
+    def name(self):
+        """Environment name."""
+        if hasattr(self.unwrapped, 'name'):
+            return self.unwrapped.name
+        if hasattr(self.unwrapped, 'spec') and self.unwrapped.spec is not None:
+            return self.unwrapped.spec.id
+        return 'nair_gait_h0918-v0'
 
     @property
     def _max_episode_steps(self):

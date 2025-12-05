@@ -65,7 +65,10 @@ class Sequential:
 
     def start(self):
         """Used once to get the initial observations."""
-        observations = [env.reset() for env in self.environments]
+        observations = []
+        for env in self.environments:
+            obs, info = env.reset()  # Gymnasium format
+            observations.append(obs)
         muscle_states = [env.muscle_states for env in self.environments]
         self.lengths = np.zeros(len(self.environments), int)
         return np.array(observations, np.float32), np.array(
@@ -81,19 +84,19 @@ class Sequential:
         muscle_states = []
 
         for i in range(len(self.environments)):
-            ob, rew, term, env_info = self.environments[i].step(actions[i])
+            ob, rew, terminated, truncated, env_info = self.environments[i].step(actions[i])  # Gymnasium 5-tuple
             muscle = self.environments[i].muscle_states
             self.lengths[i] += 1
             # Timeouts trigger resets but are not true terminations.
-            reset = term or self.lengths[i] == self._max_episode_steps
+            reset = terminated or truncated or self.lengths[i] == self._max_episode_steps
             next_observations.append(ob)
             rewards.append(rew)
             resets.append(reset)
 
-            terminations.append(term)
+            terminations.append(terminated)
 
             if reset:
-                ob = self.environments[i].reset()
+                ob, info = self.environments[i].reset()  # Gymnasium format
                 muscle = self.environments[i].muscle_states
                 self.lengths[i] = 0
 

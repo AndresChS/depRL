@@ -6,12 +6,16 @@ from types import SimpleNamespace
 import numpy as np
 from gymnasium import wrappers
 
+"""
 try:
     from myosuite.utils import gym
 except ModuleNotFoundError:
     pass
+"""
 
-
+import gymnasium as gym
+import sconegym
+print("Imported sconegym successfully")
 from deprl.vendor.tonic import environments
 from deprl.vendor.tonic.utils import logger
 
@@ -22,6 +26,7 @@ def gym_environment(*args, **kwargs):
         kwargs.pop("header")
 
     def _builder(*args, **kwargs):
+        print("Building Gym environment with sconegym")
         return gym.make(*args, **kwargs)
 
     return build_environment(_builder, *args, **kwargs, header=None)
